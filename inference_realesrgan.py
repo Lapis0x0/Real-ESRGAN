@@ -10,51 +10,50 @@ from realesrgan.archs.srvgg_arch import SRVGGNetCompact
 
 
 def main():
-    """Inference demo for Real-ESRGAN.
+    """Real-ESRGAN推理演示。
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', type=str, default='inputs', help='Input image or folder')
+    parser = argparse.ArgumentParser(description='Real-ESRGAN 图像超分辨率推理脚本。')
+    parser.add_argument('-i', '--input', type=str, default='inputs', help='输入图像或文件夹路径')
     parser.add_argument(
         '-n',
         '--model_name',
         type=str,
-        default='RealESRGAN_x4plus',
-        help=('Model names: RealESRGAN_x4plus | RealESRNet_x4plus | RealESRGAN_x4plus_anime_6B | RealESRGAN_x2plus | '
+        default='RealESRGAN_x4plus_anime_6B',
+        help=('模型名称选项: RealESRGAN_x4plus | RealESRNet_x4plus | RealESRGAN_x4plus_anime_6B | RealESRGAN_x2plus | '
               'realesr-animevideov3 | realesr-general-x4v3'))
-    parser.add_argument('-o', '--output', type=str, default='results', help='Output folder')
+    parser.add_argument('-o', '--output', type=str, default='results', help='输出文件夹路径')
     parser.add_argument(
         '-dn',
         '--denoise_strength',
         type=float,
         default=0.5,
-        help=('Denoise strength. 0 for weak denoise (keep noise), 1 for strong denoise ability. '
-              'Only used for the realesr-general-x4v3 model'))
-    parser.add_argument('-s', '--outscale', type=float, default=4, help='The final upsampling scale of the image')
+        help=('降噪强度。0表示弱降噪（保留噪声），1表示强降噪能力。仅对realesr-general-x4v3模型有效'))
+    parser.add_argument('-s', '--outscale', type=float, default=4, help='最终图像放大比例')
     parser.add_argument(
-        '--model_path', type=str, default=None, help='[Option] Model path. Usually, you do not need to specify it')
-    parser.add_argument('--suffix', type=str, default='out', help='Suffix of the restored image')
-    parser.add_argument('-t', '--tile', type=int, default=0, help='Tile size, 0 for no tile during testing')
-    parser.add_argument('--tile_pad', type=int, default=10, help='Tile padding')
-    parser.add_argument('--pre_pad', type=int, default=0, help='Pre padding size at each border')
-    parser.add_argument('--face_enhance', action='store_true', help='Use GFPGAN to enhance face')
+        '--model_path', type=str, default=None, help='[可选] 模型文件路径。通常不需要指定')
+    parser.add_argument('--suffix', type=str, default='out', help='恢复图像后的后缀名')
+    parser.add_argument('-t', '--tile', type=int, default=0, help='测试时的切片大小，0表示不使用切片')
+    parser.add_argument('--tile_pad', type=int, default=10, help='切片边缘填充大小')
+    parser.add_argument('--pre_pad', type=int, default=0, help='每边预填充的大小')
+    parser.add_argument('--face_enhance', action='store_true', help='是否使用GFPGAN增强人脸部')
     parser.add_argument(
-        '--fp32', action='store_true', help='Use fp32 precision during inference. Default: fp16 (half precision).')
+        '--fp32', action='store_true', help='推理时使用fp32精度，默认为fp16（半精度）')
     parser.add_argument(
         '--alpha_upsampler',
         type=str,
         default='realesrgan',
-        help='The upsampler for the alpha channels. Options: realesrgan | bicubic')
+        help='用于alpha通道的上采样方法。选项: realesrgan | bicubic')
     parser.add_argument(
         '--ext',
         type=str,
         default='auto',
-        help='Image extension. Options: auto | jpg | png, auto means using the same extension as inputs')
+        help='输出图像的扩展名。选项: auto | jpg | png，auto表示与输入图像相同')
     parser.add_argument(
-        '-g', '--gpu-id', type=int, default=None, help='gpu device to use (default=None) can be 0,1,2 for multi-gpu')
+        '-g', '--gpu-id', type=int, default=None, help='使用的GPU设备ID（默认为None），对于多GPU可以设置为0,1,2等')
 
     args = parser.parse_args()
 
-    # determine models according to model names
+    # 根据模型名称确定模型
     args.model_name = args.model_name.split('.')[0]
     if args.model_name == 'RealESRGAN_x4plus':  # x4 RRDBNet model
         model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
@@ -84,7 +83,7 @@ def main():
             'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth'
         ]
 
-    # determine model paths
+    # 确定模型文件路径
     if args.model_path is not None:
         model_path = args.model_path
     else:
@@ -96,14 +95,14 @@ def main():
                 model_path = load_file_from_url(
                     url=url, model_dir=os.path.join(ROOT_DIR, 'weights'), progress=True, file_name=None)
 
-    # use dni to control the denoise strength
+    # 使用dni来控制降噪程度
     dni_weight = None
     if args.model_name == 'realesr-general-x4v3' and args.denoise_strength != 1:
         wdn_model_path = model_path.replace('realesr-general-x4v3', 'realesr-general-wdn-x4v3')
         model_path = [model_path, wdn_model_path]
         dni_weight = [args.denoise_strength, 1 - args.denoise_strength]
 
-    # restorer
+    # 图像恢复器
     upsampler = RealESRGANer(
         scale=netscale,
         model_path=model_path,

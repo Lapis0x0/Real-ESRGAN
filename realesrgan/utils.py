@@ -45,12 +45,14 @@ class RealESRGANer():
         self.half = half
 
         # initialize model
+        '''
         if gpu_id:
             self.device = torch.device(
                 f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
         else:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
-
+        '''
+        self.device = torch.device("mps")
         if isinstance(model_path, list):
             # dni
             assert len(model_path) == len(dni_weight), 'model_path and dni_weight should have the save length.'
